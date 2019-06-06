@@ -1,0 +1,10 @@
+name: pysupmag
+dependencies:
+   - matplotlib
+   - numpy
+   - xarray
+   - pandas
+   - cartopy
+   - pip
+   - pip:
+      - pymap3d
