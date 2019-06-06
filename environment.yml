@@ -1,0 +1,11 @@
+name: pysupmag
+dependencies:
+   - python=3.7
+   - matplotlib
+   - numpy
+   - xarray
+   - pandas
+   - cartopy
+   - pip
+   - pip:
+      - pymap3d
