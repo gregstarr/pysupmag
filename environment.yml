@@ -7,5 +7,6 @@ dependencies:
    - pandas
    - cartopy
    - pip
+   - pytest
    - pip:
       - pymap3d
