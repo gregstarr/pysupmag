@@ -32,7 +32,7 @@ Regression Dataset:
 import numpy as np
 import pandas as pd
 import xarray as xr
-from pysupmag.multifile_array import MultifileArray
+from pysupmag.multifile_array import MultifileBaseClass
 
 
 class DataCollection:
