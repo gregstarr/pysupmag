@@ -32,7 +32,7 @@ Regression Dataset:
 import numpy as np
 import pandas as pd
 import xarray as xr
-from pysupmag.multifile_array import MultifileBaseClass
+from pysupmag.multifile_array import MultifileXarray
 
 
 class DataCollection:
@@ -83,19 +83,22 @@ class DataSource:
     def from_xarray_files(cls, name, files, stations=None):
         dates = []
         extract_stations = False
+
         if stations is None:
             extract_stations = True
             stations = set()
+
         for file in files:
             dset = xr.open_dataset(file)
             dates.append(pd.to_datetime(dset.Date_UTC.values))
             if extract_stations:
                 stations = stations.union(set(s for s in dset))
+
         if extract_stations:
             stations = list(stations)
+
         file_n = np.concatenate([np.array([i] * dates[i].shape[0]) for i in range(len(dates))])
         file_idx = np.concatenate([np.arange(dates[i].shape[0]) for i in range(len(dates))])
-        file_map = np.stack((file_n, file_idx), axis=1)
-        data = MultifileArray(file_map, files, stations)
+        data = MultifileXarray(file_n, file_idx, files, stations)
         dates = np.concatenate(dates)
         return cls(name, data, dates)

@@ -43,6 +43,7 @@ class MultifileBaseClass:
     def _process_request(self, item):
         # first item detemines slice 1
         shape1 = None
+        reshuffle = None
         if not isinstance(item, tuple):
             item = (item, )
         slice2 = item[1:] or (slice(None), )
@@ -57,8 +58,11 @@ class MultifileBaseClass:
                 slice1 = tuple([idx[:, j] for j in range(idx.shape[1])])
             elif item[0].dtype == int:
                 shape1 = item[0].shape
-                slice1 = (item[0].ravel(), )
-        return slice1, slice2, shape1
+                idx = item[0].ravel()
+                sorted_idx = np.argsort(idx)
+                reshuffle = np.argsort(sorted_idx)
+                slice1 = (idx[sorted_idx], )
+        return slice1, slice2, shape1, reshuffle
 
     def __getitem__(self, item):
         """This is not elegant.
@@ -66,7 +70,7 @@ class MultifileBaseClass:
         # convert the given item into a numpy slice
         item = self._item_handler(item)
         # virtual slice 1, virtual slice 2, and reshape for first dimension if necessary
-        vslice1, vslice2, shape1 = self._process_request(item)
+        vslice1, vslice2, shape1, reshuffle1 = self._process_request(item)
         # determine required files
         files_to_access = np.unique(self.file_n[vslice1[0]])
         # initialize list for data from different files
@@ -91,7 +95,10 @@ class MultifileBaseClass:
             requested_data = np.concatenate(requested_data, axis=0)
         else:
             requested_data = requested_data[0]
-        # reshape the first dimenion if necessary
+        # un-sort the indexes
+        if reshuffle1 is not None:
+            requested_data = requested_data[reshuffle1]
+        # reshape the first dimension if necessary
         if shape1 is not None:
             return requested_data.reshape(shape1 + requested_data.shape[1:])
         return requested_data
@@ -117,7 +124,7 @@ class MultifileXarray(MultifileBaseClass):
         self.station_len = len(self.stations)
         super().__init__(file_n, file_idx, paths, (self.station_len, 5))
 
-    def _load_cache_xarray(self, file_n):
+    def _load_cache(self, file_n):
         time_len = np.sum(self.file_n == file_n)
         self.cache = np.ones((time_len,) + self.shape) * np.nan  # (time x station x component)
         data = xr.open_dataset(self.paths[file_n]).sel(dim_1=['MLT', 'MLAT', 'N', 'E', 'Z'])

@@ -9,8 +9,6 @@ Tests:
             - integer arrays
             - integer arrays with repeated items
             - combinations of the above on multiple dimensions !!
-    - xarray DataSets:
-        - all the same
 
 Create the test files (numpy arrays, etc.) in setup and pass in paths in a fixture
 clean them up at the end with a fixture
@@ -20,8 +18,7 @@ import numpy as np
 from tempfile import TemporaryDirectory
 from pysupmag.multifile_array import MultifileNumpyArray
 
-
-N_TESTS = 1000
+N_TESTS = 10000
 
 
 @pytest.fixture(scope="module")
@@ -67,7 +64,6 @@ def test_slices_numpy(file_map, numpy_data, numpy_files, i):
     check_idx = slice(np.random.randint(1, file_n.shape[0]))
     assert np.all(array[check_idx] == numpy_data[check_idx])
 
-
     a = np.random.randint(1, file_n.shape[0] - 1)
     b = np.random.randint(1, file_n.shape[0] - a)
     check_idx = slice(a, a + b)
@@ -108,7 +104,6 @@ def test_integer_array_repeated_item_numpy(file_map, numpy_data, numpy_files, i)
     assert np.all(array[check_idx] == numpy_data[check_idx])
 
 
-
 def test_simple_combination_numpy(file_map, numpy_data, numpy_files):
     file_n, file_idx = file_map
     array = MultifileNumpyArray(file_n, file_idx, numpy_files, (10, 10))
@@ -135,7 +130,8 @@ def test_mask_combinations_numpy_b(file_map, numpy_data, numpy_files, i):
 def test_expand_first_dim_numpy_a(file_map, numpy_data, numpy_files, i):
     file_n, file_idx = file_map
     array = MultifileNumpyArray(file_n, file_idx, numpy_files, (10, 10))
-    check_idx = np.round(np.cumsum(np.random.rand((np.random.randint(4, file_n.shape[0]) // 4) * 4)).astype(int)).reshape((-1, 4))
+    check_idx = np.round(
+        np.cumsum(np.random.rand((np.random.randint(4, file_n.shape[0]) // 4) * 4)).astype(int)).reshape((-1, 4))
     assert np.all(array[check_idx] == numpy_data[check_idx])
 
 
@@ -143,7 +139,8 @@ def test_expand_first_dim_numpy_a(file_map, numpy_data, numpy_files, i):
 def test_expand_first_dim_numpy_b(file_map, numpy_data, numpy_files, i):
     file_n, file_idx = file_map
     array = MultifileNumpyArray(file_n, file_idx, numpy_files, (10, 10))
-    check_idx = np.round(np.cumsum(np.random.rand((np.random.randint(4, file_n.shape[0]) // 4) * 4)).astype(int)).reshape((-1, 4))
+    check_idx = np.round(
+        np.cumsum(np.random.rand((np.random.randint(4, file_n.shape[0]) // 4) * 4)).astype(int)).reshape((-1, 4))
     assert np.all(array[check_idx, 2:6, :] == numpy_data[check_idx, 2:6, :])
     assert np.all(array[check_idx, :, 0] == numpy_data[check_idx, :, 0])
     assert np.all(array[check_idx, 5] == numpy_data[check_idx, 5])

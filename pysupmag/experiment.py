@@ -1,7 +1,7 @@
 import glob
 import pandas as pd
 import numpy as np
-from data.dataset import DataSource, DataCollection
+from pysupmag.dataset import DataSource, DataCollection
 
 print("Solar Wind")
 solar_wind_fn = "solar_wind.pkl"
