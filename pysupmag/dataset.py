@@ -103,7 +103,8 @@ class DataSource:
     def get_next(self, master_idx):
         diff = self.self_to_master[None, :] - master_idx[:, None]
         diff = np.where(diff >= 0, diff, np.inf)
-        return self.self_to_master[np.argmin(diff, axis=1)]
+        self_idx = np.argmin(diff, axis=1)
+        return self.self_to_master[self_idx], self_idx
 
     def update_alignment(self, master_dates):
         # assuming master_dates contains ALL datetimes and that each of self.dates is present in master_dates only once
