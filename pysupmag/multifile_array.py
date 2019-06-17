@@ -19,6 +19,7 @@ class MultifileBaseClass:
         self.file_idx = file_idx
         self.paths = paths
         self.shape = shape
+        self.ndim = len(self.shape) + 1
         if not isinstance(self.shape, tuple):
             self.shape = tuple(self.shape)
         self.cache = None
@@ -56,12 +57,14 @@ class MultifileBaseClass:
             if item[0].dtype == bool:
                 idx = np.argwhere(item[0])
                 slice1 = tuple([idx[:, j] for j in range(idx.shape[1])])
-            elif item[0].dtype == int:
+            elif item[0].dtype in [int, np.int32, np.int64]:
                 shape1 = item[0].shape
                 idx = item[0].ravel()
                 sorted_idx = np.argsort(idx)
                 reshuffle = np.argsort(sorted_idx)
                 slice1 = (idx[sorted_idx], )
+            else:
+                raise IndexError("Must be indexed with int or bool")
         return slice1, slice2, shape1, reshuffle
 
     def __getitem__(self, item):
@@ -114,10 +117,10 @@ class MultifileNumpyArray(MultifileBaseClass):
 class MultifileXarray(MultifileBaseClass):
     """
     This is made more complicated by the fact that each dataset could have a different set of stations in it.
-    Options:
-        - ensure ahead of time that all the mag files have the same stations (extent with NaNs)
-        - initialize this object with the list of stations which constitute the overall 'array'  <--  favorite
-        - access with a list of stations
+        - initialize this object with the list of stations which constitute the overall 'array'
+
+    This should ultimately be made more general, i.e. optional labels / indices for each axis, load_cache function
+    based on these indices ...
     """
     def __init__(self, file_n, file_idx, paths, stations):
         self.stations = stations
@@ -125,6 +128,7 @@ class MultifileXarray(MultifileBaseClass):
         super().__init__(file_n, file_idx, paths, (self.station_len, 5))
 
     def _load_cache(self, file_n):
+        print(self.paths[file_n])
         time_len = np.sum(self.file_n == file_n)
         self.cache = np.ones((time_len,) + self.shape) * np.nan  # (time x station x component)
         data = xr.open_dataset(self.paths[file_n]).sel(dim_1=['MLT', 'MLAT', 'N', 'E', 'Z'])

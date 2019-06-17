@@ -20,7 +20,7 @@ from tempfile import TemporaryDirectory
 from pysupmag.multifile_array import MultifileXarray
 import glob
 
-N_TESTS = 10000
+N_TESTS = 100
 XARRAY_FILES = glob.glob("C:/Users/Greg/code/substorm-detection/data/mag_data/mag_data*.nc")
 
 
@@ -112,6 +112,7 @@ def test_integer_array_xarray(file_map, xarray_data, xarray_files, i):
     array = MultifileXarray(file_n, file_idx, xarray_files, stations)
 
     check_idx = np.round(np.cumsum(np.random.rand(np.random.randint(1, file_n.shape[0]))).astype(int))
+    np.random.shuffle(check_idx)
     assert np.all(array[check_idx] == data[check_idx])
 
 

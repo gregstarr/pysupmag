@@ -18,7 +18,7 @@ import numpy as np
 from tempfile import TemporaryDirectory
 from pysupmag.multifile_array import MultifileNumpyArray
 
-N_TESTS = 10000
+N_TESTS = 100
 
 
 @pytest.fixture(scope="module")
@@ -91,6 +91,7 @@ def test_integer_array_numpy(file_map, numpy_data, numpy_files, i):
     file_n, file_idx = file_map
     array = MultifileNumpyArray(file_n, file_idx, numpy_files, (10, 10))
     check_idx = np.round(np.cumsum(np.random.rand(np.random.randint(1, file_n.shape[0]))).astype(int))
+    np.random.shuffle(check_idx)
     assert np.all(array[check_idx] == numpy_data[check_idx])
 
 

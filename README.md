@@ -4,8 +4,8 @@ Python toolkit for downloading, analyzing and plotting data from SuperMAG
 [SuperMAG](http://supermag.jhuapl.edu/)
 
 ### To Do:
-- get MultifileArray working for numpy arrays
-- get MultifileArray working for xarray datasets
+- ~~get MultifileArray working for numpy arrays~~
+- ~~get MultifileArray working for xarray datasets~~
 - write DataCollection management functions for collecting aligned data
 - write dataset creation functions
 - multithreaded downloading for the interpolated data
