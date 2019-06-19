@@ -6,9 +6,13 @@ Python toolkit for downloading, analyzing and plotting data from SuperMAG
 ### To Do:
 - ~~get MultifileArray working for numpy arrays~~
 - ~~get MultifileArray working for xarray datasets~~
-- write DataCollection management functions for collecting aligned data
+- ~~write DataCollection management functions for collecting aligned data~~
 - write dataset creation functions
+    - binary classification
+    - ~~regression~~
 - multithreaded downloading for the interpolated data
+    - experiment
+    - ~~generalize download process~~
 - generator functions for using data with tensorflow and keras
 - make plots
 
