@@ -69,6 +69,8 @@ class MultifileBaseClass:
 
     def __getitem__(self, item):
         """This is not elegant.
+        I think I should have a function that is called per file which masks the requested_data array and fills it
+        in. I can call it once at the beginning to make use of the already cached file.
         """
         # convert the given item into a numpy slice
         item = self._item_handler(item)
@@ -76,8 +78,6 @@ class MultifileBaseClass:
         vslice1, vslice2, shape1, reshuffle1 = self._process_request(item)
         # determine required files
         files_to_access = np.unique(self.file_n[vslice1[0]])
-        # initialize list for data from different files
-        requested_data = [None for _ in files_to_access]
         # TODO: check if the currently loaded cache can be used first, then remove that file from files_to_access
         # iterate through the files
         for j, file_n in enumerate(files_to_access):
@@ -91,13 +91,12 @@ class MultifileBaseClass:
                 fslice1 += (vslice1[i][request_in_file_mask], )
             # second fslice are elements that all files have in the same place
             fslice2 = (slice(None), ) + vslice2
-            # re assign list element to the sliced data
-            requested_data[j] = self.cache[fslice1][fslice2]
-        # concatenate the list together
-        if len(requested_data) > 1:
-            requested_data = np.concatenate(requested_data, axis=0)
-        else:
-            requested_data = requested_data[0]
+            # if this is the first file, create the requested_data array based on the shape of the request
+            if j == 0:
+                requested_data = np.empty((vslice1[0].shape[0], ) + self.cache[fslice1][fslice2].shape[1:])
+            # fill in the requested data array where it should be filled
+            requested_data[request_in_file_mask] = self.cache[fslice1][fslice2]
+
         # un-sort the indexes
         if reshuffle1 is not None:
             requested_data = requested_data[reshuffle1]
@@ -128,6 +127,7 @@ class MultifileXarray(MultifileBaseClass):
         super().__init__(file_n, file_idx, paths, (self.station_len, 5))
 
     def _load_cache(self, file_n):
+        del self.cache
         print(self.paths[file_n])
         time_len = np.sum(self.file_n == file_n)
         self.cache = np.ones((time_len,) + self.shape) * np.nan  # (time x station x component)
@@ -136,3 +136,4 @@ class MultifileXarray(MultifileBaseClass):
             if st in data:
                 self.cache[:, i] = data[st].values
         self.file_num_in_cache = file_n
+        del data

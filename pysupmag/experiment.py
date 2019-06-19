@@ -1,69 +1,105 @@
-import glob
+"""
+the polar plot downloads are 1 day long each
+the request needs an URL and a params dictionary:
+    - station data in CSV requires params
+    - polar plots (fitted vectors) comes in netCDF and requires no params
+    - solar wind datas
+    - sme
+    - substorms
+"""
+import requests
+import xarray as xr
+from io import BytesIO
 import pandas as pd
 import numpy as np
-from pysupmag.dataset import DataSource, DataCollection
+import threading
+import queue
+import time
+import pickle
 
-DATA_DIR = "C:/Users/Greg/code/substorm-detection/data/"
 
-print("Solar Wind")
-solar_wind_fn = DATA_DIR + "solar_wind.pkl"
-data = pd.read_pickle(solar_wind_fn)
-sw = DataSource("solar_wind", data.values, data.index)
+def process_ncdf(data):
+    df = pd.DataFrame({'year': data['time_yr'], 'month': data['time_mo'], 'day': data['time_dy'],
+                       'hour': data['time_hr'], 'minute': data['time_mt'], 'second': data['time_sc']})
+    dates = pd.to_datetime(df, unit='m')
+    db_nez = data[['dbn_nez', 'dbe_nez', 'dbz_nez']].to_array().values.transpose(1, 2, 0)
+    db_nez = db_nez.reshape((-1, 24, 25, 3))
+    mlt = np.arange(24)[:, None] * np.ones((1, 25))
+    mlat = np.arange(88, 38, -2)[None, :] * np.ones((24, 1))
 
-print("SME - filename")
-sme_fn = DATA_DIR + "SME.csv"
-print("SME - read csv")
-data = pd.read_csv(sme_fn, index_col=0)
-print("SME - data source")
-sme = DataSource("sme", data.values, pd.to_datetime(data.index))
+    try:
+        assert np.mean(data['mlat'].values.reshape((-1, 24, 25)) == mlat[None, :, :]) > .9
+    except AssertionError as e:
+        print("MLAT improperly formatted")
+        raise e
+    try:
+        assert np.mean(data['mlt'].values.reshape((-1, 24, 25)) == mlt[None, :, :]) > .9
+    except AssertionError as e:
+        print("MLT improperly formatted")
+        raise e
 
-print("Substorms - filename")
-substorm_fn = DATA_DIR + "substorms.csv"
-print("Substorms - read csv")
-data = pd.read_csv(substorm_fn)
-print("Substorms - to datetime")
-data.index = pd.to_datetime(data['Date_UTC'])
-print("Substorms - drop")
-data = data.drop(columns=['Unnamed: 0', 'Date_UTC'])
-print("Substorms - datasource")
-substorms = DataSource("substorms", data.values, data.index)
+    dset = xr.Dataset({'db_nez': (['time', 'x', 'y', 'component'], db_nez)},
+                      coords={'mlt': (['x', 'y'], mlt),
+                              'mlat': (['x', 'y'], mlat),
+                              'time': pd.DatetimeIndex(dates), 'component': ['n', 'e', 'z']})
+    return dset
 
-print("Mag")
-paths = glob.glob(DATA_DIR + "mag_data/mag_data*.nc")
-mag = DataSource.from_xarray_files("mag", paths)
 
-print("Collection")
-collection = DataCollection(sources=[mag, sw, sme, substorms])
+def download_data(url_queue, results):
+    while not url_queue.empty():
+        i, url = url_queue.get()
+        print(url)
+        tries = 0
+        while tries < 5:
+            try:
+                req = requests.get(url, timeout=120)
+                if not req:
+                    print("ERROR")
+                    continue
+                break
+            except Exception as e:
+                tries += 1
+                print(e)
+        buffer = BytesIO(req.content)
+        data = xr.open_dataset(buffer)
+        results[i] = process_ncdf(data)
 
-# TODO: make regression dataset
-Tm = 100
-Tw = 100
-Tsme = 20
-# number of examples should be 1 or 2 per substorm
-# randomly select that many datetime indices from master list
-print("randomly select times")
-example_date_idx = np.random.choice(np.arange(collection.dates.shape[0] // 10, dtype=int), 1000, replace=False)
 
-# grab corresponding data and targets
-# mag data is from t0 - Tm : t0
-print("mag data")
-mag_data, mag_mask = mag.get_data(example_date_idx, before=Tm)
+N_THREADS = 40
+DATA_DIR = "E:/mag_data_interp/"
+url_format = "http://supermag.jhuapl.edu/ncdf/schavec-mlt/{year:04d}/{year:04d}{month:02d}{day:02d}.north.schavec-mlt-supermag.rev-0002.ncdf"
 
-# solar wind data is from t0 - Tw : t0
-print("sw data")
-sw_data, sw_mask = sw.get_data(example_date_idx, before=Tw)
+for year in range(1990, 2019):
+    START_TIME = time.time()
 
-# target is t_next_substorm - t0
-print("targets")
-ss_idx = substorms.get_next(example_date_idx)  # returns dates? or indices?
-targets = ss_idx - example_date_idx
+    url_queue = queue.Queue(maxsize=0)
+    start_date = np.datetime64("{}-01-01".format(year))
+    end_date = np.datetime64("{}-01-01".format(year + 1))
+    dates = pd.to_datetime(np.arange(start_date, end_date, np.timedelta64(1, 'D')))
+    results = [None for _ in dates]
+    for i, date in enumerate(dates):
+        url_queue.put((i, url_format.format(year=date.year, month=date.month, day=date.day)))
 
-# sme is lowest sml over t_next_substorm : t_next_substorm + Tsme
-print("sme")
-sme_data, sme_mask = sme.get_data(ss_idx, after=Tsme)
-sme_data = sme_data[:, :, 1].min(axis=1)
+    threads = []
+    for _ in range(N_THREADS):
+        thread = threading.Thread(target=download_data, args=(url_queue, results))
+        thread.start()
+        time.sleep(.2)
+        threads.append(thread)
 
-# location
-# mask out examples with bad data or outside of region
+    for thread in threads:
+        thread.join()
 
-print()
+    dataset = xr.concat(results, dim='time')
+    # get unique times
+    # convert types to np.int64
+    # convert types to np.int32
+    # get rid of repeats
+    dataset = dataset.isel(time=np.unique(dataset['time'], return_index=True)[1])
+    # restrict to this year
+    dataset = dataset.sel(time=str(year))
+    with open(DATA_DIR + "{}.pkl".format(year), 'wb') as f:
+        pickle.dump(dataset, f, protocol=-1)
+
+    TIME_DIFF = time.time() - START_TIME
+    print("Year {} took: {} minutes, {} seconds".format(year, int(TIME_DIFF // 60), int(TIME_DIFF % 60)))

@@ -12,6 +12,7 @@ I think the script will look something like this:
 Created on Wed Dec 26 10:03:48 2018
 """
 
+
 import requests
 from datetime import datetime
 import xarray as xr
@@ -162,6 +163,56 @@ def downloadData():
         end_date = datetime(yr + 1, 1, 1, 0, 0, 0)
         fn = "mag_data_{}".format(yr)
         downloadDataToFile(fn, start_date, end_date, N_INTERVALS)
+
+
+def download_magnetometer():
+    pass
+
+
+def download_indices():
+    pass
+
+
+def download_fitted_vectors():
+    pass
+
+
+def download_substorms():
+    pass
+
+
+def generic_download_data():
+    """
+    - determine how many files the data should be split into: one single file / yearly file / monthly file etc.
+    - for each file:
+        - start N threads
+        - in each thread:
+            - the request (url and params) is pulled from a queue
+            - the request content is turned into StringIO / BytesIO
+            - the resulting IO is processed by a data-type-specific function returning an xarray DataArray / DataSet
+            - this DataSet is put into the results list
+        - merge the list of DataSets into one
+        - save the dataset
+    """
+    pass
+
+
+"""
+In general, the way the data is downloaded is as follows:
+    - determine how many files the data should be split into: one single file / yearly file / monthly file etc.
+    - for each file:
+        - start N threads
+        - in each thread:
+            - the request (url and params) is pulled from a queue
+            - the request content is turned into StringIO / BytesIO
+            - the resulting IO is processed by a data-type-specific function returning an xarray DataArray / DataSet
+            - this DataSet is put into the results list
+        - merge the list of DataSets into one
+        - save the dataset
+    
+The datasets should share axis ordering when possible, (time, spatial dimensions, component).
+It would be great to be able to save the datasets as NetCDF. 
+"""
 
 
 if __name__ == "__main__":
